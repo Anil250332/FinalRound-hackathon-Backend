@@ -230,7 +230,7 @@ export const seedDatabase = async () => {
     {
       hospitalId: apollo._id,
       bloodGroup: 'AB-',
-      component: 'Fresh Frozen Plasma (FFP)',
+      component: 'FFP',
       units: 2,
       reservedUnits: 0,
       expiryDate: expiry5Days,

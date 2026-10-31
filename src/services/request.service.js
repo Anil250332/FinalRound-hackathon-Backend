@@ -79,8 +79,15 @@ export class RequestService {
   }
 
   async findMatchingHospitals(request) {
-    const reqDoc = request.requestingHospitalId ? request : await requestRepository.findById(request._id);
-    const sourceHospital = reqDoc.requestingHospitalId;
+    const sourceHospitalId = request.requestingHospitalId?._id || request.requestingHospitalId;
+    const sourceHospital = await hospitalRepository.findById(sourceHospitalId);
+    if (!sourceHospital) {
+      throw new Error('Source hospital not found');
+    }
+
+    const bloodGroup = request.bloodGroup;
+    const component = request.component;
+    const requiredUnits = request.requiredUnits;
 
     // Find all verified hospitals other than source
     const otherHospitals = await hospitalRepository.findVerifiedHospitals(sourceHospital._id);
@@ -90,8 +97,8 @@ export class RequestService {
     for (const hosp of otherHospitals) {
       const inventory = await inventoryRepository.findByHospitalAndComponent(
         hosp._id,
-        reqDoc.bloodGroup,
-        reqDoc.component
+        bloodGroup,
+        component
       );
 
       const availableUnits = inventory ? Math.max(0, inventory.units - inventory.reservedUnits) : 0;
@@ -120,7 +127,7 @@ export class RequestService {
         reservedUnits: inventory ? inventory.reservedUnits : 0,
         isExpired,
         hasMatch: availableUnits > 0 && !isExpired,
-        isSufficient: availableUnits >= reqDoc.requiredUnits,
+        isSufficient: availableUnits >= requiredUnits,
         distanceKm: distance,
         lastUpdated: inventory ? inventory.lastUpdated : null,
       });
