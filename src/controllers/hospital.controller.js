@@ -22,7 +22,7 @@ export class HospitalController {
 
   async create(req, res, next) {
     try {
-      const { name, hospitalCode, address, city, coordinates, contact, role } = req.body;
+      const { name, hospitalCode, address, city, coordinates, contact, role, adminName, adminEmail, adminPassword } = req.body;
       if (!name || !hospitalCode || !address || !coordinates || !contact) {
         return sendError(res, 'Missing required hospital fields', 'VALIDATION_ERROR', 400);
       }
@@ -35,8 +35,11 @@ export class HospitalController {
         coordinates,
         contact,
         role: role || 'BOTH',
+        adminName,
+        adminEmail,
+        adminPassword,
       });
-      return sendSuccess(res, 'Hospital created successfully', hospital, 201);
+      return sendSuccess(res, 'Hospital and admin account created successfully', hospital, 201);
     } catch (error) {
       next(error);
     }

@@ -1,4 +1,6 @@
+import bcrypt from 'bcryptjs';
 import { hospitalRepository } from '../repositories/hospital.repository.js';
+import { userRepository } from '../repositories/user.repository.js';
 import { calculateDistance } from '../utils/distance.js';
 
 export class HospitalService {
@@ -19,7 +21,48 @@ export class HospitalService {
     if (existing) {
       throw new Error(`Hospital with code ${data.hospitalCode} already exists`);
     }
-    return hospitalRepository.create(data);
+
+    // 1. Create Hospital
+    const hospital = await hospitalRepository.create({
+      name: data.name,
+      hospitalCode: data.hospitalCode,
+      address: data.address,
+      city: data.city || 'Indore',
+      coordinates: data.coordinates,
+      contact: data.contact,
+      role: data.role || 'BOTH',
+      verificationStatus: data.verificationStatus || 'VERIFIED',
+    });
+
+    // 2. Automatically create the Hospital Admin user account
+    const adminEmail = (data.adminEmail || data.contact?.email || '').toLowerCase().trim();
+    const adminPassword = data.adminPassword || 'Password@123';
+    let adminUser = null;
+
+    if (adminEmail) {
+      const existingUser = await userRepository.findByEmail(adminEmail);
+      if (!existingUser) {
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(adminPassword, salt);
+
+        adminUser = await userRepository.create({
+          name: data.adminName || `${hospital.name} Head`,
+          email: adminEmail,
+          password: hashedPassword,
+          role: 'HOSPITAL_ADMIN',
+          hospitalId: hospital._id,
+          phone: data.contact?.phone || '',
+          isActive: true,
+        });
+      }
+    }
+
+    const hospitalObj = hospital.toObject ? hospital.toObject() : hospital;
+    return {
+      ...hospitalObj,
+      adminEmail,
+      adminCreated: Boolean(adminUser),
+    };
   }
 
   async updateHospital(id, data) {
