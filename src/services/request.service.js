@@ -179,6 +179,58 @@ export class RequestService {
 
     return updated;
   }
+
+  async fulfillRequest(id, fulfillingHospitalId, fulfillingHospitalName, user) {
+    const request = await requestRepository.findById(id);
+    if (!request) {
+      throw new Error('Emergency request not found');
+    }
+
+    if (['FULLY_ALLOCATED', 'HANDOVER_COMPLETED'].includes(request.status)) {
+      throw new Error('This request has already been fulfilled');
+    }
+
+    const fulfillingHospital = await hospitalRepository.findById(fulfillingHospitalId);
+    const resolvedName = fulfillingHospitalName || (fulfillingHospital ? fulfillingHospital.name : 'Regional Hospital');
+
+    const updated = await requestRepository.update(id, {
+      status: 'FULLY_ALLOCATED',
+      allocatedUnits: request.requiredUnits,
+      acceptedByHospitalId: fulfillingHospitalId,
+      acceptedByHospitalName: resolvedName,
+      acceptedAt: new Date(),
+    });
+
+    // Notify the requesting hospital
+    if (request.requestingHospitalId) {
+      const recipientId = request.requestingHospitalId._id || request.requestingHospitalId;
+      await notificationRepository.create({
+        recipientHospitalId: recipientId,
+        title: `Requirement Accepted by ${resolvedName}`,
+        message: `${resolvedName} has accepted your emergency requirement for ${request.requiredUnits} Units ${request.bloodGroup} ${request.component}.`,
+        type: 'OFFER_ACCEPTED',
+        referenceId: request._id.toString(),
+      });
+    }
+
+    // Broadcast socket event
+    broadcastEmergency('request:fulfilled', {
+      id: request._id,
+      requestId: request.requestId,
+      acceptedByHospitalName: resolvedName,
+      status: 'FULLY_ALLOCATED',
+    });
+
+    // Audit log
+    await auditRepository.create({
+      userId: user ? user._id : null,
+      hospitalId: fulfillingHospitalId,
+      action: 'ACCEPT_AND_FULFILL_REQUEST',
+      details: { requestId: request.requestId, acceptedBy: resolvedName },
+    });
+
+    return updated;
+  }
 }
 
 export const requestService = new RequestService();

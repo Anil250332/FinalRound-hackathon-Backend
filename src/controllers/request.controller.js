@@ -71,6 +71,27 @@ export class RequestController {
       next(error);
     }
   }
+
+  async fulfill(req, res, next) {
+    try {
+      const hospitalId =
+        req.body.fulfillingHospitalId ||
+        (req.user && req.user.hospitalId ? req.user.hospitalId._id : null);
+      if (!hospitalId) {
+        return sendError(res, 'Fulfilling hospital ID is required', 'VALIDATION_ERROR', 400);
+      }
+      const hospitalName = req.body.fulfillingHospitalName;
+      const fulfilled = await requestService.fulfillRequest(
+        req.params.id,
+        hospitalId,
+        hospitalName,
+        req.user
+      );
+      return sendSuccess(res, 'Emergency requirement accepted and fulfilled successfully', fulfilled);
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 export const requestController = new RequestController();

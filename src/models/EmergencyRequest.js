@@ -73,6 +73,17 @@ const emergencyRequestSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
     },
+    acceptedByHospitalId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Hospital',
+    },
+    acceptedByHospitalName: {
+      type: String,
+      trim: true,
+    },
+    acceptedAt: {
+      type: Date,
+    },
   },
   { timestamps: true }
 );

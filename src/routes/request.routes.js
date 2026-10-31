@@ -15,4 +15,7 @@ router.post('/', authenticate, (req, res, next) => requestController.create(req,
 // Cancel emergency request
 router.patch('/:id/cancel', authenticate, (req, res, next) => requestController.cancel(req, res, next));
 
+// Accept / Fulfill emergency request by another hospital
+router.patch('/:id/fulfill', authenticate, (req, res, next) => requestController.fulfill(req, res, next));
+
 export default router;
