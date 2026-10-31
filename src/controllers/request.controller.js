@@ -72,24 +72,20 @@ export class RequestController {
     }
   }
 
-  async fulfill(req, res, next) {
+  async accept(req, res, next) {
     try {
       const hospitalId =
-        req.body.fulfillingHospitalId ||
-        (req.user && req.user.hospitalId ? req.user.hospitalId._id : null);
+        req.body.hospitalId ||
+        (req.user && req.user.hospitalId ? (req.user.hospitalId._id || req.user.hospitalId) : null);
+
       if (!hospitalId) {
-        return sendError(res, 'Fulfilling hospital ID is required', 'VALIDATION_ERROR', 400);
+        return sendError(res, 'Accepting hospital ID is required', 'VALIDATION_ERROR', 400);
       }
-      const hospitalName = req.body.fulfillingHospitalName;
-      const fulfilled = await requestService.fulfillRequest(
-        req.params.id,
-        hospitalId,
-        hospitalName,
-        req.user
-      );
-      return sendSuccess(res, 'Emergency requirement accepted and fulfilled successfully', fulfilled);
+
+      const accepted = await requestService.acceptEmergencyRequest(req.params.id, hospitalId, req.user);
+      return sendSuccess(res, 'Emergency request accepted successfully', accepted);
     } catch (error) {
-      next(error);
+      return sendError(res, error.message, 'ACCEPT_FAILED', 400);
     }
   }
 }

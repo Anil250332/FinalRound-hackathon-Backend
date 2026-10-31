@@ -180,53 +180,64 @@ export class RequestService {
     return updated;
   }
 
-  async fulfillRequest(id, fulfillingHospitalId, fulfillingHospitalName, user) {
+  async acceptEmergencyRequest(id, acceptingHospitalId, user) {
     const request = await requestRepository.findById(id);
     if (!request) {
       throw new Error('Emergency request not found');
     }
 
-    if (['FULLY_ALLOCATED', 'HANDOVER_COMPLETED'].includes(request.status)) {
-      throw new Error('This request has already been fulfilled');
+    if (request.status === 'ACCEPTED') {
+      throw new Error('This request has already been accepted by another hospital');
     }
 
-    const fulfillingHospital = await hospitalRepository.findById(fulfillingHospitalId);
-    const resolvedName = fulfillingHospitalName || (fulfillingHospital ? fulfillingHospital.name : 'Regional Hospital');
+    if (request.status === 'CANCELLED') {
+      throw new Error('This request has been cancelled');
+    }
+
+    const sourceHospitalId = request.requestingHospitalId?._id || request.requestingHospitalId;
+    if (sourceHospitalId.toString() === acceptingHospitalId.toString()) {
+      throw new Error('A hospital cannot accept its own emergency request');
+    }
+
+    const acceptingHospital = await hospitalRepository.findById(acceptingHospitalId);
+    if (!acceptingHospital) {
+      throw new Error('Accepting hospital not found');
+    }
 
     const updated = await requestRepository.update(id, {
-      status: 'FULLY_ALLOCATED',
-      allocatedUnits: request.requiredUnits,
-      acceptedByHospitalId: fulfillingHospitalId,
-      acceptedByHospitalName: resolvedName,
+      status: 'ACCEPTED',
+      acceptedByHospitalId: acceptingHospitalId,
+      acceptedByUserId: user ? user._id : null,
       acceptedAt: new Date(),
     });
 
-    // Notify the requesting hospital
-    if (request.requestingHospitalId) {
-      const recipientId = request.requestingHospitalId._id || request.requestingHospitalId;
-      await notificationRepository.create({
-        recipientHospitalId: recipientId,
-        title: `Requirement Accepted by ${resolvedName}`,
-        message: `${resolvedName} has accepted your emergency requirement for ${request.requiredUnits} Units ${request.bloodGroup} ${request.component}.`,
-        type: 'OFFER_ACCEPTED',
-        referenceId: request._id.toString(),
-      });
-    }
+    // Notify requesting hospital
+    await notificationRepository.create({
+      recipientHospitalId: sourceHospitalId,
+      title: `✅ Emergency Request ACCEPTED: ${request.bloodGroup} ${request.component}`,
+      message: `${acceptingHospital.name} has accepted your emergency request! Contact: ${acceptingHospital.contact?.phone || 'N/A'}, Email: ${acceptingHospital.contact?.email || 'N/A'}. Coordinate directly for fulfillment.`,
+      type: 'OFFER_ACCEPTED',
+      referenceId: request._id.toString(),
+    });
 
-    // Broadcast socket event
-    broadcastEmergency('request:fulfilled', {
-      id: request._id,
+    // Broadcast socket update
+    broadcastEmergency('emergency:accepted', {
       requestId: request.requestId,
-      acceptedByHospitalName: resolvedName,
-      status: 'FULLY_ALLOCATED',
+      id: request._id,
+      requestingHospitalName: request.requestingHospitalId?.name,
+      acceptedByHospitalName: acceptingHospital.name,
+      acceptedByContact: acceptingHospital.contact,
+      bloodGroup: request.bloodGroup,
+      component: request.component,
+      requiredUnits: request.requiredUnits,
     });
 
     // Audit log
     await auditRepository.create({
       userId: user ? user._id : null,
-      hospitalId: fulfillingHospitalId,
-      action: 'ACCEPT_AND_FULFILL_REQUEST',
-      details: { requestId: request.requestId, acceptedBy: resolvedName },
+      hospitalId: acceptingHospitalId,
+      action: 'ACCEPT_EMERGENCY_REQUEST',
+      details: { requestId: request.requestId, acceptedBy: acceptingHospital.name },
     });
 
     return updated;

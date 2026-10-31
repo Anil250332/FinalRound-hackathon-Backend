@@ -6,6 +6,7 @@ export class RequestRepository {
       .populate('requestingHospitalId')
       .populate('acceptedByHospitalId')
       .populate('createdBy', 'name email role')
+      .populate('acceptedByUserId', 'name email phone role')
       .sort({ createdAt: -1 });
   }
 
@@ -13,19 +14,21 @@ export class RequestRepository {
     return EmergencyRequest.findById(id)
       .populate('requestingHospitalId')
       .populate('acceptedByHospitalId')
-      .populate('createdBy', 'name email role');
+      .populate('createdBy', 'name email role')
+      .populate('acceptedByUserId', 'name email phone role');
   }
 
   async findByRequestId(requestId) {
     return EmergencyRequest.findOne({ requestId })
       .populate('requestingHospitalId')
       .populate('acceptedByHospitalId')
-      .populate('createdBy', 'name email role');
+      .populate('createdBy', 'name email role')
+      .populate('acceptedByUserId', 'name email phone role');
   }
 
   async findActiveRequests(filter = {}) {
     return EmergencyRequest.find({
-      status: { $in: ['SEARCHING', 'OFFERS_RECEIVED', 'PARTIALLY_ALLOCATED', 'FULLY_ALLOCATED', 'DISPATCH_INITIATED'] },
+      status: { $in: ['SEARCHING', 'ACCEPTED', 'OFFERS_RECEIVED', 'PARTIALLY_ALLOCATED', 'FULLY_ALLOCATED', 'DISPATCH_INITIATED'] },
       ...filter,
     })
       .populate('requestingHospitalId')
@@ -41,7 +44,8 @@ export class RequestRepository {
     return EmergencyRequest.findByIdAndUpdate(id, updateData, { new: true, runValidators: true })
       .populate('requestingHospitalId')
       .populate('acceptedByHospitalId')
-      .populate('createdBy', 'name email role');
+      .populate('createdBy', 'name email role')
+      .populate('acceptedByUserId', 'name email phone role');
   }
 
   async delete(id) {

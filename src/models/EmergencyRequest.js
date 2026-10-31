@@ -58,6 +58,7 @@ const emergencyRequestSchema = new mongoose.Schema(
       type: String,
       enum: [
         'SEARCHING',
+        'ACCEPTED',
         'OFFERS_RECEIVED',
         'PARTIALLY_ALLOCATED',
         'FULLY_ALLOCATED',
@@ -69,20 +70,23 @@ const emergencyRequestSchema = new mongoose.Schema(
       default: 'SEARCHING',
       index: true,
     },
-    createdBy: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
-    },
     acceptedByHospitalId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Hospital',
+      default: null,
     },
-    acceptedByHospitalName: {
-      type: String,
-      trim: true,
+    acceptedByUserId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
     },
     acceptedAt: {
       type: Date,
+      default: null,
+    },
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
     },
   },
   { timestamps: true }
