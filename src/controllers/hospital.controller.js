@@ -27,13 +27,20 @@ export class HospitalController {
         return sendError(res, 'Missing required hospital fields', 'VALIDATION_ERROR', 400);
       }
 
+      const contactObj = typeof contact === 'object' && contact !== null ? contact : {};
+      const safeContact = {
+        phone: contactObj.phone || req.body.phone || '+91 98260 00000',
+        email: contactObj.email || req.body.email || `${name.toLowerCase().replace(/[^a-z0-9]/g, '')}@hospital.org`,
+        emergencyContact: contactObj.emergencyContact || contactObj.phone || req.body.phone || '+91 98260 00000',
+      };
+
       const hospital = await hospitalService.createHospital({
         name,
         hospitalCode,
         address,
         city: city || 'Indore',
         coordinates,
-        contact,
+        contact: safeContact,
         role: role || 'BOTH',
         adminName,
         adminEmail,

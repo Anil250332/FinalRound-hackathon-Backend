@@ -23,13 +23,19 @@ export class HospitalService {
     }
 
     // 1. Create Hospital
+    const contact = {
+      phone: data.contact?.phone || data.phone || '+91 98260 00000',
+      email: data.contact?.email || data.email || `${data.name.toLowerCase().replace(/[^a-z0-9]/g, '')}@hospital.org`,
+      emergencyContact: data.contact?.emergencyContact || data.contact?.phone || data.phone || '+91 98260 00000',
+    };
+
     const hospital = await hospitalRepository.create({
       name: data.name,
       hospitalCode: data.hospitalCode,
       address: data.address,
       city: data.city || 'Indore',
       coordinates: data.coordinates,
-      contact: data.contact,
+      contact,
       role: data.role || 'BOTH',
       verificationStatus: data.verificationStatus || 'VERIFIED',
     });
